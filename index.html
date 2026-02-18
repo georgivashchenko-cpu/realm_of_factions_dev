@@ -47,6 +47,12 @@ body {
   #gold-hud {
     font-size:11px;
   }
+  #shop-btn-hud {
+    display: inline-block; /* Show in landscape mobile mode */
+    padding: 5px 12px;
+    font-size: 10px;
+    margin-left: 8px;
+  }
 }
 .bar-wrap { display:flex; flex-direction:column; gap:4px; min-width:140px; flex:1; max-width:180px; }
 .bar-label { color:#fff; font-size:11px; text-shadow:1px 1px 3px #000; text-align:center; }
@@ -57,6 +63,18 @@ body {
 #sta-bar .bar-inner  { background:linear-gradient(90deg,#27ae60,#2ecc71); }
 #gold-hud { color:#f1c40f; font-size:14px; font-weight:700;
   text-shadow:0 0 8px #f39c12; white-space:nowrap; }
+
+/* Shop button in HUD */
+#shop-btn-hud {
+  display: none; /* Hidden by default, shown in mobile mode */
+  padding: 8px 16px; background: rgba(241, 196, 15, 0.9);
+  color: #000; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  pointer-events: all;
+  transition: all 0.2s;
+  margin-left: 12px;
+}
+#shop-btn-hud:active { background: rgba(241, 196, 15, 1); transform: scale(0.95); }
 
 #crosshair {
   position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
@@ -371,8 +389,8 @@ body {
       <div class="bar" id="sta-bar"><div class="bar-inner" id="sta-fill" style="width:100%"></div></div>
     </div>
     <div id="gold-hud">💰 <span id="gold-val">150</span> монет</div>
+    <button id="shop-btn-hud" onclick="openShop()">🏪 Магазин</button>
   </div>
-  <button id="shop-btn-hud" onclick="openShop()">🏪 Магазин</button>
 </div>
 
 <div id="eye-overlay"></div>
@@ -511,6 +529,8 @@ function selectControlMode(mode) {
     const mobileControls = document.getElementById('mobile-controls');
     console.log('Mobile controls element:', mobileControls);
     mobileControls.style.display = 'block';
+    // Show shop button in mobile mode
+    document.getElementById('shop-btn-hud').style.display = 'inline-block';
     // Initialize mobile controls immediately when mode is selected
     setTimeout(() => {
       console.log('Calling initMobileControls...');
@@ -519,6 +539,8 @@ function selectControlMode(mode) {
   } else {
     document.getElementById('mobile-controls').style.display = 'none';
     document.getElementById('controls-hint').style.display = 'block';
+    // Hide shop button in desktop mode (use B key instead)
+    document.getElementById('shop-btn-hud').style.display = 'none';
   }
 }
 
