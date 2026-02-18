@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Realm of Factions — Царство Фракций</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { 
+  background:#000; font-family:'Segoe UI',sans-serif; overflow:hidden;
+  touch-action: none; /* Prevent pull-to-refresh and other gestures */
+  -webkit-user-select: none;
+  user-select: none;
+}
+#canvas { display:block; touch-action: none; }
+#ui {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  pointer-events:none; z-index:10;
+}
+#hud {
+  position:fixed; bottom:0; left:0; right:0;
+  display:flex; justify-content:space-between; align-items:flex-end;
+  padding:12px 20px; pointer-events:none;
+}
+
+/* Landscape mode: move HUD to top */
+@media (orientation: landscape) and (max-width: 915px) {
+  #hud {
+    top:0; bottom:auto;
+    align-items:flex-start;
+    padding:8px 15px;
+  }
+  .bar-wrap {
+    min-width:120px;
+  }
+  .bar {
+    height:10px;
+  }
+  .bar-label {
+    font-size:10px;
+  }
+  #gold-hud {
+    font-size:12px;
+  }
+}
+.bar-wrap { display:flex; flex-direction:column; gap:4px; min-width:160px; }
+.bar-label { color:#fff; font-size:11px; text-shadow:1px 1px 3px #000; }
+.bar { height:14px; border-radius:7px; border:1px solid rgba(255,255,255,0.3);
+  background:rgba(0,0,0,0.5); overflow:hidden; }
+.bar-inner { height:100%; border-radius:7px; transition:width 0.3s; }
+#hp-bar .bar-inner   { background:linear-gradient(90deg,#c0392b,#e74c3c); }
+#sta-bar .bar-inner  { background:linear-gradient(90deg,#27ae60,#2ecc71); }
+#gold-hud { color:#f1c40f; font-size:14px; font-weight:700;
+  text-shadow:0 0 8px #f39c12; }
+
+#crosshair {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:24px; height:24px; pointer-events:none; opacity:0.8;
+}
+#crosshair::before, #crosshair::after {
+  content:''; position:absolute; background:#fff;
+  box-shadow:0 0 4px rgba(0,0,0,0.8);
+}
+#crosshair::before { width:2px; height:24px; left:11px; top:0; }
+#crosshair::after  { width:24px; height:2px; top:11px; left:0; }
+
+#minimap {
+  position:fixed; top:12px; right:12px; width:140px; height:140px;
+  border:2px solid rgba(255,255,255,0.4); border-radius:8px;
+  background:rgba(0,0,0,0.6); overflow:hidden;
+}
+#minimap canvas { display:block; }
+
+/* Landscape mode: smaller minimap */
+@media (orientation: landscape) and (max-width: 915px) {
+  #minimap {
+    width:100px; height:100px;
+    top:60px; right:8px;
+  }
+  #minimap canvas {
+    width:100px; height:100px;
+  }
+}
+
+#msg {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-60%);
+  color:#fff; font-size:22px; font-weight:700; text-align:center;
+  text-shadow:0 0 12px #000; pointer-events:none; opacity:0;
+  transition:opacity 0.5s;
+}
+
+#controls-hint {
+  position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+  color:rgba(255,255,255,0.55); font-size:12px; text-align:center;
+  pointer-events:none;
+}
+
+@media (orientation: landscape) and (max-width: 915px) {
+  #controls-hint {
+    display:none;
+  }
+}
+
+/* MENU */
+#control-menu, #menu {
+  position:fixed; inset:0; background:rgba(0,0,0,0.92);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; z-index:100; gap:14px;
+}
+#control-menu h1, #menu h1 {
+  font-size:42px; font-weight:900; letter-spacing:3px;
+  background:linear-gradient(135deg,#f1c40f,#e67e22,#c0392b);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  margin-bottom:10px;
+}
+#control-menu h2, #menu h2 { color:#aaa; font-size:16px; margin-bottom:20px; font-weight:400; }
+.faction-btn {
+  width:320px; padding:16px 24px; border-radius:12px; border:2px solid;
+  cursor:pointer; pointer-events:all; font-size:15px; font-weight:700;
+  transition:all 0.2s; text-align:left; background:rgba(0,0,0,0.5);
+}
+.faction-btn:hover { transform:scale(1.04); }
+.faction-btn .btn-title { font-size:18px; margin-bottom:4px; }
+.faction-btn .btn-desc { font-size:12px; font-weight:400; opacity:0.8; }
+#btn-elf   { border-color:#27ae60; color:#2ecc71; }
+#btn-elf:hover   { background:rgba(39,174,96,0.2); }
+#btn-guard { border-color:#2980b9; color:#3498db; }
+#btn-guard:hover { background:rgba(41,128,185,0.2); }
+#btn-evil  { border-color:#8e44ad; color:#9b59b6; }
+#btn-evil:hover  { background:rgba(142,68,173,0.2); }
+
+/* SHOP */
+#shop {
+  position:fixed; inset:0; background:rgba(0,0,0,0.88);
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; z-index:90; gap:10px;
+}
+#shop h2 { color:#f1c40f; font-size:28px; margin-bottom:10px; }
+.shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:600px; }
+.shop-item {
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.2);
+  border-radius:10px; padding:12px; text-align:center; cursor:pointer;
+  pointer-events:all; color:#fff; transition:all 0.2s;
+}
+.shop-item:hover { background:rgba(255,255,255,0.15); border-color:#f1c40f; }
+.shop-item .item-name { font-size:13px; font-weight:700; margin-bottom:4px; }
+.shop-item .item-price { color:#f1c40f; font-size:12px; }
+.shop-item .item-icon { font-size:28px; margin-bottom:6px; }
+#shop-close {
+  margin-top:16px; padding:10px 32px; background:#c0392b; color:#fff;
+  border:none; border-radius:8px; font-size:15px; cursor:pointer;
+  pointer-events:all;
+}
+
+/* INJURY OVERLAY */
+#injury-overlay {
+  position:fixed; inset:0; pointer-events:none; z-index:50;
+}
+#eye-overlay {
+  position:fixed; right:0; top:0; width:50%; height:100%;
+  background:#000; opacity:0; transition:opacity 0.5s; pointer-events:none; z-index:51;
+}
+#blood-overlay {
+  position:fixed; inset:0; border:0px solid transparent;
+  box-shadow:inset 0 0 0px rgba(192,57,43,0); pointer-events:none; z-index:52;
+  transition:box-shadow 0.3s;
+}
+
+/* LOG */
+#log {
+  position:fixed; left:12px; top:12px; width:250px;
+  max-height:120px; overflow:hidden; pointer-events:none;
+}
+.log-entry {
+  font-size:12px; color:rgba(255,255,255,0.85);
+  text-shadow:1px 1px 3px #000; line-height:1.5;
+  animation:fadeLog 6s forwards;
+}
+@keyframes fadeLog { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+@media (orientation: landscape) and (max-width: 915px) {
+  #log {
+    top:55px;
+    width:200px;
+    max-height:80px;
+  }
+  .log-entry {
+    font-size:10px;
+  }
+}
+
+#caravan-btn {
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  padding:10px 28px; background:rgba(241,196,15,0.85); color:#000;
+  border:none; border-radius:8px; font-size:14px; font-weight:700;
+  cursor:pointer; pointer-events:all; display:none; z-index:20;
+}
+#attack-btn {
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  padding:10px 28px; background:rgba(192,57,43,0.85); color:#fff;
+  border:none; border-radius:8px; font-size:14px; font-weight:700;
+  cursor:pointer; pointer-events:all; display:none; z-index:20;
+}
+
+/* MOBILE CONTROLS */
+#mobile-controls {
+  position:fixed; inset:0; pointer-events:none; z-index:15; display:none;
+}
+.joystick {
+  position:absolute; bottom:5vh; left:5vw; width:min(140px, 20vw); height:min(140px, 20vw);
+  background:rgba(255,255,255,0.1); border-radius:50%; border:2px solid rgba(255,255,255,0.3);
+  pointer-events:all;
+}
+.joystick-stick {
+  position:absolute; top:50%; left:50%; width:35%; height:35%;
+  background:rgba(255,255,255,0.4); border-radius:50%; border:2px solid rgba(255,255,255,0.6);
+  transform:translate(-50%,-50%); transition:all 0.1s;
+}
+.mobile-btn {
+  position:absolute; width:min(70px, 12vw); height:min(70px, 12vw); border-radius:50%;
+  background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.4);
+  display:flex; align-items:center; justify-content:center;
+  font-size:min(28px, 5vw); color:#fff; pointer-events:all; user-select:none;
+  transition:all 0.1s; touch-action:none;
+}
+.mobile-btn:active { background:rgba(255,255,255,0.35); transform:scale(0.95); }
+#btn-jump { bottom:15vh; right:5vw; }
+#btn-attack { bottom:5vh; right:calc(5vw + min(80px, 14vw)); }
+#btn-interact { bottom:25vh; right:5vw; font-size:min(22px, 4vw); }
+#btn-shop { top:25vh; right:5vw; width:min(60px, 10vw); height:min(60px, 10vw); font-size:min(20px, 4vw); }
+#btn-menu { top:5vh; left:5vw; width:min(50px, 9vw); height:min(50px, 9vw); font-size:min(18px, 3.5vw); background:rgba(192,57,43,0.6); }
+
+.mobile-hint {
+  position:fixed; bottom:1vh; left:50%; transform:translateX(-50%);
+  color:rgba(255,255,255,0.4); font-size:min(11px, 2vw); text-align:center; pointer-events:none;
+  white-space:nowrap; padding:0 10px;
+}
+
+@media (orientation: landscape) {
+  .joystick { bottom:8vh; left:3vw; width:min(110px, 14vh); height:min(110px, 14vh); }
+  #btn-jump { bottom:18vh; right:3vw; width:min(60px, 10vh); height:min(60px, 10vh); }
+  #btn-attack { bottom:8vh; right:calc(3vw + min(65px, 11vh)); width:min(60px, 10vh); height:min(60px, 10vh); }
+  #btn-interact { bottom:28vh; right:3vw; width:min(60px, 10vh); height:min(60px, 10vh); }
+  #btn-shop { top:60vh; right:3vw; width:min(50px, 8vh); height:min(50px, 8vh); }
+  #btn-menu { top:8vh; left:3vw; width:min(45px, 7vh); height:min(45px, 7vh); }
+  .mobile-hint { display:none; }
+}
+
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div id="ui">
+  <div id="crosshair"></div>
+  <div id="minimap"><canvas id="mm"></canvas></div>
+  <div id="log"></div>
+  <div id="msg"></div>
+  <div id="controls-hint">WASD — движение | ЛКМ — удар | E — взаимодействие | B — магазин | F5 — сохранить | F9 — загрузить</div>
+  <div id="hud">
+    <div class="bar-wrap">
+      <span class="bar-label">❤ Здоровье</span>
+      <div class="bar" id="hp-bar"><div class="bar-inner" id="hp-fill" style="width:100%"></div></div>
+      <span class="bar-label">⚡ Выносливость</span>
+      <div class="bar" id="sta-bar"><div class="bar-inner" id="sta-fill" style="width:100%"></div></div>
+    </div>
+    <div id="gold-hud">💰 <span id="gold-val">150</span> монет</div>
+  </div>
+</div>
+
+<div id="eye-overlay"></div>
+<div id="blood-overlay"></div>
+
+<button id="caravan-btn" onclick="robCaravan()">🪙 Грабить Коровань</button>
+<button id="attack-btn"  onclick="launchAttack()">⚔ Атаковать!</button>
+
+<!-- MOBILE CONTROLS -->
+<div id="mobile-controls">
+  <div class="joystick" id="joystick">
+    <div class="joystick-stick" id="joystick-stick"></div>
+  </div>
+  <div class="mobile-btn" id="btn-jump">⬆</div>
+  <div class="mobile-btn" id="btn-attack">⚔</div>
+  <div class="mobile-btn" id="btn-interact">🤝</div>
+  <div class="mobile-btn" id="btn-shop">🏪</div>
+  <div class="mobile-btn" id="btn-menu">☰</div>
+  <div class="mobile-hint">Джойстик: движение | ⚔: атака | ⬆: прыжок | 🤝: действие</div>
+</div>
+
+<!-- CONTROL MODE MENU -->
+<div id="control-menu">
+  <h1>⚔ ЦАРСТВО ФРАКЦИЙ</h1>
+  <h2>Выберите режим управления</h2>
+  <button class="faction-btn" id="btn-desktop" onclick="selectControlMode('desktop')">
+    <div class="btn-title">🖥 Компьютер</div>
+    <div class="btn-desc">Управление: WASD + Мышь</div>
+  </button>
+  <button class="faction-btn" id="btn-mobile" onclick="selectControlMode('mobile')">
+    <div class="btn-title">📱 Телефон / Планшет</div>
+    <div class="btn-desc">Управление: Сенсорные кнопки на экране</div>
+  </button>
+</div>
+
+<!-- FACTION MENU -->
+<div id="menu" style="display:none;">
+  <h1>⚔ ЦАРСТВО ФРАКЦИЙ</h1>
+  <h2>Realm of Factions — выберите свою судьбу</h2>
+  <button class="faction-btn" id="btn-elf" onclick="startGame('elf')">
+    <div class="btn-title">🌿 Лесные Эльфы</div>
+    <div class="btn-desc">Густой лес, деревянные домики. Защищайтесь от солдат и злодея. Грабьте корованы!</div>
+  </button>
+  <button class="faction-btn" id="btn-guard" onclick="startGame('guard')">
+    <div class="btn-title">🛡 Стража Дворца</div>
+    <div class="btn-desc">Слушайтесь командира. Защищайте дворец от шпионов и эльфийских партизан.</div>
+  </button>
+  <button class="faction-btn" id="btn-evil" onclick="startGame('evil')">
+    <div class="btn-title">💀 Тёмный Владыка</div>
+    <div class="btn-desc">Вы сами себе командир. Пошлите войска захватить дворец или уничтожить эльфов!</div>
+  </button>
+</div>
+
+<!-- SHOP -->
+<div id="shop">
+  <h2>🏪 Магазин</h2>
+  <div class="shop-grid">
+    <div class="shop-item" onclick="buyItem('potion',30)">
+      <div class="item-icon">🧪</div>
+      <div class="item-name">Зелье лечения</div>
+      <div class="item-price">30 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('sword',80)">
+      <div class="item-icon">⚔</div>
+      <div class="item-name">Короткий меч</div>
+      <div class="item-price">80 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('bow',60)">
+      <div class="item-icon">🏹</div>
+      <div class="item-name">Лук</div>
+      <div class="item-price">60 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('armor',120)">
+      <div class="item-icon">🛡</div>
+      <div class="item-name">Кожаный доспех</div>
+      <div class="item-price">120 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('prosthetic_arm',200)">
+      <div class="item-icon">🦾</div>
+      <div class="item-name">Протез руки</div>
+      <div class="item-price">200 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('prosthetic_leg',250)">
+      <div class="item-icon">🦿</div>
+      <div class="item-name">Протез ноги</div>
+      <div class="item-price">250 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('eye_patch',80)">
+      <div class="item-icon">🏴‍☠️</div>
+      <div class="item-name">Глазной протез</div>
+      <div class="item-price">80 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('food',15)">
+      <div class="item-icon">🍖</div>
+      <div class="item-name">Еда</div>
+      <div class="item-price">15 монет</div>
+    </div>
+    <div class="shop-item" onclick="buyItem('horse',300)">
+      <div class="item-icon">🐴</div>
+      <div class="item-name">Лошадь</div>
+      <div class="item-price">300 монет</div>
+    </div>
+  </div>
+  <button id="shop-close" onclick="closeShop()">Закрыть</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ============================================================
+//  GAME STATE
+// ============================================================
+const G = {
+  faction: null, hp:100, maxHp:100, stamina:100,
+  gold:150, weapon:'fists', armor:false,
+  injuries:{ leftArm:false, rightArm:false, leftLeg:false, rightLeg:false, leftEye:false },
+  prosthetics:{ arm:false, leg:false, eye:false },
+  onWheelchair:false, crawling:false,
+  inventory:[], kills:0,
+  zones:['neutral','palace','elves','evil'],
+  currentZone:'elves',
+  caravanNear:false, enemyNear:false, saveData:null,
+  controlMode: null // 'desktop' or 'mobile'
+};
+
+// ============================================================
+//  CONTROL MODE SELECTION
+// ============================================================
+function selectControlMode(mode) {
+  console.log('Selected control mode:', mode);
+  G.controlMode = mode;
+  document.getElementById('control-menu').style.display = 'none';
+  document.getElementById('menu').style.display = 'flex';
+  
+  if(mode === 'mobile') {
+    console.log('Setting up mobile mode...');
+    document.getElementById('controls-hint').style.display = 'none';
+    const mobileControls = document.getElementById('mobile-controls');
+    console.log('Mobile controls element:', mobileControls);
+    mobileControls.style.display = 'block';
+    // Initialize mobile controls immediately when mode is selected
+    setTimeout(() => {
+      console.log('Calling initMobileControls...');
+      initMobileControls();
+    }, 100);
+  } else {
+    document.getElementById('mobile-controls').style.display = 'none';
+    document.getElementById('controls-hint').style.display = 'block';
+  }
+}
+
+// ============================================================
+//  THREE.JS SCENE
+// ============================================================
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x4a7c59, 0.018);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 400);
+camera.position.set(0, 1.7, 0);
+
+// Lights
+const sun = new THREE.DirectionalLight(0xffe8b0, 1.2);
+sun.position.set(80, 120, 60);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 400;
+sun.shadow.camera.left = -120;
+sun.shadow.camera.right = 120;
+sun.shadow.camera.top = 120;
+sun.shadow.camera.bottom = -120;
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0x334455, 0.7));
+const hemi = new THREE.HemisphereLight(0x87ceeb, 0x4a6741, 0.5);
+scene.add(hemi);
+
+// ============================================================
+//  GROUND
+// ============================================================
+function makeGround(faction) {
+  const col = faction==='elf' ? 0x2d5a1b : faction==='guard' ? 0x8b7355 : 0x3d3035;
+  const geo = new THREE.PlaneGeometry(400, 400, 32, 32);
+  const verts = geo.attributes.position.array;
+  for(let i=0;i<verts.length;i+=3) {
+    if(i%3===2) verts[i] = (Math.random()-0.5)*0.8;
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshLambertMaterial({ color:col });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI/2;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+}
+
+// ============================================================
+//  TREES
+// ============================================================
+const trees = [];
+function makeTree(x, z, dist) {
+  const group = new THREE.Group();
+  // trunk
+  const trunkGeo = new THREE.CylinderGeometry(0.18, 0.28, 2.5+Math.random(), 7);
+  const trunkMat = new THREE.MeshLambertMaterial({ color:0x5c3d1e });
+  const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+  trunk.position.y = 1.25;
+  trunk.castShadow = true;
+  group.add(trunk);
+  // foliage (3 layers)
+  const green = 0x1a5c14 + Math.floor(Math.random()*0x103010);
+  const fMat = new THREE.MeshLambertMaterial({ color:green });
+  for(let i=0;i<3;i++) {
+    const r = 1.4 - i*0.3;
+    const h = 2.0 - i*0.3;
+    const fGeo = new THREE.ConeGeometry(r, h, 7);
+    const f = new THREE.Mesh(fGeo, fMat);
+    f.position.y = 2.0 + i*1.2;
+    f.castShadow = true;
+    group.add(f);
+  }
+  group.position.set(x, 0, z);
+  group.userData = { isTree:true, dist };
+  scene.add(group);
+  trees.push(group);
+  return group;
+}
+
+// Billboard sprite for distant trees
+function makeBillboardTree(x, z) {
+  const geo = new THREE.PlaneGeometry(3.5, 5.5);
+  const mat = new THREE.MeshBasicMaterial({
+    color:0x1e6b18, side:THREE.DoubleSide, transparent:true, opacity:0.9
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(x, 2.75, z);
+  m.userData = { isBillboard:true };
+  scene.add(m);
+  return m;
+}
+
+function spawnForest(count) {
+  for(let i=0;i<count;i++) {
+    let x, z, d;
+    do {
+      x = (Math.random()-0.5)*340;
+      z = (Math.random()-0.5)*340;
+      d = Math.sqrt(x*x+z*z);
+    } while(d<8);
+    if(d < 80) makeTree(x, z, d);
+    else makeBillboardTree(x, z);
+  }
+}
+
+// ============================================================
+//  BUILDINGS
+// ============================================================
+function makeBox(w,h,d, color, x,y,z, castShadow=true) {
+  const g = new THREE.BoxGeometry(w,h,d);
+  const m = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.Mesh(g, m);
+  mesh.position.set(x,y,z);
+  if(castShadow) mesh.castShadow = mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+
+function makeElfVillage() {
+  // 4 wooden huts
+  const huts = [[-8,0,-8],[8,0,-8],[-8,0,8],[8,0,8]];
+  huts.forEach(([x,,z]) => {
+    makeBox(5,3,5, 0x7b4f2a, x, 1.5, z);
+    // roof
+    const rg = new THREE.ConeGeometry(4, 2.5, 4);
+    const rm = new THREE.MeshLambertMaterial({ color:0x5c3010 });
+    const roof = new THREE.Mesh(rg, rm);
+    roof.position.set(x,4,z);
+    roof.rotation.y = Math.PI/4;
+    roof.castShadow = true;
+    scene.add(roof);
+    // door
+    makeBox(0.8,1.6,0.1, 0x3d1f00, x, 0.8, z+2.55);
+  });
+  logMsg('🌿 Вы в деревне лесных эльфов!');
+}
+
+function makePalace() {
+  scene.fog = new THREE.FogExp2(0xa09070, 0.012);
+  // palace walls
+  makeBox(30,6,2, 0xc8b99a, 0,3,14);
+  makeBox(30,6,2, 0xc8b99a, 0,3,-14);
+  makeBox(2,6,30, 0xc8b99a, 14,3,0);
+  makeBox(2,6,30, 0xc8b99a, -14,3,0);
+  // towers
+  [[13,0,13],[13,0,-13],[-13,0,13],[-13,0,-13]].forEach(([x,,z]) => {
+    makeBox(3,9,3, 0xb8a888, x,4.5,z);
+    makeBox(3.8,1,3.8, 0xa08060, x,9.5,z);
+  });
+  // palace main
+  makeBox(12,8,10, 0xd4c4a0, 0,4,0);
+  // roof
+  const rg = new THREE.BoxGeometry(13,2,11);
+  const rm = new THREE.MeshLambertMaterial({ color:0x6a5030 });
+  const roof = new THREE.Mesh(rg, rm); roof.position.set(0,9,0);
+  scene.add(roof);
+  logMsg('🛡 Вы в стенах Императорского дворца!');
+}
+
+function makeEvilFort() {
+  scene.fog = new THREE.FogExp2(0x1a0f1f, 0.02);
+  // mountains (simplified)
+  for(let i=0;i<12;i++) {
+    const a = (i/12)*Math.PI*2;
+    const r = 28+Math.random()*10;
+    const h = 6+Math.random()*10;
+    const mg = new THREE.ConeGeometry(6+Math.random()*4, h, 6);
+    const mm = new THREE.MeshLambertMaterial({ color:0x3a3040 });
+    const mt = new THREE.Mesh(mg, mm);
+    mt.position.set(Math.cos(a)*r, h/2, Math.sin(a)*r);
+    mt.castShadow = true; scene.add(mt);
+  }
+  // old fort
+  makeBox(20,5,2, 0x4a3840, 0,2.5,10);
+  makeBox(20,5,2, 0x4a3840, 0,2.5,-10);
+  makeBox(2,5,22, 0x4a3840, 10,2.5,0);
+  makeBox(2,5,22, 0x4a3840, -10,2.5,0);
+  makeBox(3,8,3, 0x3d2f3c, 9,4,-9);
+  makeBox(3,8,3, 0x3d2f3c, -9,4,-9);
+  makeBox(10,4,8, 0x2d1f2c, 0,2,0);
+  logMsg('💀 Старый форт в горах — логово Тёмного Владыки!');
+}
+
+// ============================================================
+//  ENEMIES / NPCs
+// ============================================================
+const enemies = [];
+let enemyMeshGroup;
+
+function makeEnemy(type, x, z) {
+  const g = new THREE.Group();
+  const colors = { soldier:0x4060a0, elf:0x2e7d32, evil:0x5d2060 };
+  const c = colors[type] || 0x808080;
+  // body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.7,1,0.5),
+    new THREE.MeshLambertMaterial({ color:c }));
+  body.position.y = 1.3; body.castShadow=true; g.add(body);
+  // head
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.45,0.45),
+    new THREE.MeshLambertMaterial({ color:0xfad7a0 }));
+  head.position.y = 2.1; head.castShadow=true; g.add(head);
+  // left arm
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.2,0.8,0.2),
+    new THREE.MeshLambertMaterial({ color:c }));
+  arm.position.set(-0.5, 1.3, 0); arm.castShadow=true; g.add(arm);
+  arm.userData.isArm = true;
+  // right arm
+  const arm2 = arm.clone(); arm2.position.set(0.5,1.3,0); g.add(arm2);
+  // left leg
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.9,0.25),
+    new THREE.MeshLambertMaterial({ color:c }));
+  leg.position.set(-0.2, 0.4, 0); leg.castShadow=true; g.add(leg);
+  // right leg
+  const leg2 = leg.clone(); leg2.position.set(0.2,0.4,0); g.add(leg2);
+  // weapon
+  const wep = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.9,0.1),
+    new THREE.MeshLambertMaterial({ color:0x888888 }));
+  wep.position.set(0.8,1.5,0); wep.castShadow=true; g.add(wep);
+
+  g.position.set(x, 0, z);
+  g.userData = {
+    type, hp:50, maxHp:50, alive:true,
+    speed: 0.015+Math.random()*0.01,
+    dead:false, deathTimer:0,
+    hasArm:true, hasLeg:true
+  };
+  scene.add(g);
+  enemies.push(g);
+  return g;
+}
+
+function spawnEnemies(faction) {
+  const types = {
+    elf:['soldier','evil'], guard:['elf','evil'], evil:['soldier','elf']
+  };
+  const etypes = types[faction] || ['soldier'];
+  const positions = [
+    [15,15],[15,-15],[-15,15],[-15,-15],
+    [25,5],[-25,5],[5,25],[5,-25]
+  ];
+  positions.forEach(([x,z]) => {
+    const t = etypes[Math.floor(Math.random()*etypes.length)];
+    makeEnemy(t, x, z);
+  });
+}
+
+// ============================================================
+//  CARAVAN
+// ============================================================
+let caravan = null;
+function makeCaravan() {
+  const g = new THREE.Group();
+  // wagon body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(4,1.5,2),
+    new THREE.MeshLambertMaterial({ color:0x8b6914 }));
+  body.position.y = 1.5; g.add(body);
+  // wheels
+  for(const [wx,wz] of [[-1.5,0.5,1],[1.5,0.5,1],[-1.5,0.5,-1],[1.5,0.5,-1]]) {
+    const wg = new THREE.CylinderGeometry(0.5,0.5,0.2,10);
+    const wm = new THREE.MeshLambertMaterial({ color:0x4a3010 });
+    const wheel = new THREE.Mesh(wg, wm);
+    wheel.rotation.z = Math.PI/2;
+    wheel.position.set(wx, 0.5, wz); g.add(wheel);
+  }
+  // canopy
+  const can = new THREE.Mesh(new THREE.BoxGeometry(3.5,1,1.8),
+    new THREE.MeshLambertMaterial({ color:0xc8a030, transparent:true, opacity:0.85 }));
+  can.position.y = 2.8; g.add(can);
+
+  g.position.set(30, 0, 0);
+  g.userData = { gold: 80+Math.floor(Math.random()*120), robbed:false };
+  scene.add(g);
+  caravan = g;
+}
+
+// ============================================================
+//  PLAYER CONTROLLER
+// ============================================================
+const keys = {};
+const mobileInput = { x:0, z:0, attack:false, jump:false, interact:false };
+
+document.addEventListener('keydown', e => { keys[e.code]=true; handleKey(e.code); });
+document.addEventListener('keyup',   e => { keys[e.code]=false; });
+
+// ============================================================
+//  MOBILE CONTROLS
+// ============================================================
+let mobileControlsInitialized = false;
+
+function initMobileControls() {
+  if(mobileControlsInitialized) return;
+  
+  console.log('Initializing mobile controls...');
+  
+  try {
+    const joystick = document.getElementById('joystick');
+    const stick = document.getElementById('joystick-stick');
+    
+    if(!joystick || !stick) {
+      console.error('Joystick elements not found!');
+      return;
+    }
+    
+    let touching = false;
+    
+    function handleJoystickMove(clientX, clientY) {
+      const rect = joystick.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const maxRadius = rect.width * 0.32; // 32% of joystick size
+      
+      let dx = clientX - rect.left - centerX;
+      let dy = clientY - rect.top - centerY;
+      
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist > maxRadius) {
+        dx = dx / dist * maxRadius;
+        dy = dy / dist * maxRadius;
+      }
+      
+      stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+      
+      // Normalize to -1 to 1
+      mobileInput.x = dx / maxRadius;
+      mobileInput.z = dy / maxRadius;
+    }
+    
+    function resetJoystick() {
+      stick.style.transform = 'translate(-50%, -50%)';
+      mobileInput.x = 0;
+      mobileInput.z = 0;
+    }
+    
+    // Touch events
+    joystick.addEventListener('touchstart', e => {
+      e.preventDefault();
+      touching = true;
+      const touch = e.touches[0];
+      handleJoystickMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+    
+    joystick.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if(!touching) return;
+      const touch = e.touches[0];
+      handleJoystickMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+    
+    joystick.addEventListener('touchend', e => {
+      e.preventDefault();
+      touching = false;
+      resetJoystick();
+    }, { passive: false });
+    
+    // Mouse events (for testing on desktop)
+    joystick.addEventListener('mousedown', e => {
+      touching = true;
+      handleJoystickMove(e.clientX, e.clientY);
+    });
+    
+    document.addEventListener('mousemove', e => {
+      if(!touching) return;
+      handleJoystickMove(e.clientX, e.clientY);
+    });
+    
+    document.addEventListener('mouseup', () => {
+      if(touching) {
+        touching = false;
+        resetJoystick();
+      }
+    });
+    
+    // Button handlers - with error checking
+    const btnJump = document.getElementById('btn-jump');
+    const btnAttack = document.getElementById('btn-attack');
+    const btnInteract = document.getElementById('btn-interact');
+    const btnShop = document.getElementById('btn-shop');
+    const btnMenu = document.getElementById('btn-menu');
+    
+    if(btnJump) {
+      btnJump.addEventListener('touchstart', e => {
+        e.preventDefault();
+        mobileJump();
+      }, { passive: false });
+      btnJump.addEventListener('click', mobileJump);
+    }
+    
+    if(btnAttack) {
+      btnAttack.addEventListener('touchstart', e => {
+        e.preventDefault();
+        doAttack();
+      }, { passive: false });
+      btnAttack.addEventListener('click', doAttack);
+    }
+    
+    if(btnInteract) {
+      btnInteract.addEventListener('touchstart', e => {
+        e.preventDefault();
+        interact();
+      }, { passive: false });
+      btnInteract.addEventListener('click', interact);
+    }
+    
+    if(btnShop) {
+      btnShop.addEventListener('touchstart', e => {
+        e.preventDefault();
+        openShop();
+      }, { passive: false });
+      btnShop.addEventListener('click', openShop);
+    }
+    
+    if(btnMenu) {
+      btnMenu.addEventListener('touchstart', e => {
+        e.preventDefault();
+        showMobileMenu();
+      }, { passive: false });
+      btnMenu.addEventListener('click', showMobileMenu);
+    }
+    
+    mobileControlsInitialized = true;
+    console.log('Mobile controls initialized successfully');
+    
+  } catch(error) {
+    console.error('Error initializing mobile controls:', error);
+  }
+}
+
+function mobileJump() {
+  if(onGround && jumpCooldown<=0 && !G.injuries.leftLeg && !G.injuries.rightLeg && !G.onWheelchair && !G.crawling) {
+    velY = 0.22; onGround = false; jumpCooldown = 20;
+    logMsg('🦘 Прыжок!');
+  }
+}
+
+function showMobileMenu() {
+  document.getElementById('menu').style.display='flex';
+}
+
+// ============================================================
+//  CAMERA LOOK CONTROLS (Mobile: Touch drag on screen)
+// ============================================================
+let lastTouchX = 0, lastTouchY = 0;
+let isTouching = false;
+
+canvas.addEventListener('touchstart', e => {
+  if(G.controlMode !== 'mobile') return;
+  const touch = e.touches[0];
+  lastTouchX = touch.clientX;
+  lastTouchY = touch.clientY;
+  isTouching = true;
+});
+
+canvas.addEventListener('touchmove', e => {
+  if(G.controlMode !== 'mobile' || !isTouching) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const dx = touch.clientX - lastTouchX;
+  const dy = touch.clientY - lastTouchY;
+  
+  yaw.y -= dx * 0.004;
+  yaw.x -= dy * 0.004;
+  yaw.x = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, yaw.x));
+  
+  lastTouchX = touch.clientX;
+  lastTouchY = touch.clientY;
+});
+
+canvas.addEventListener('touchend', e => {
+  if(G.controlMode !== 'mobile') return;
+  isTouching = false;
+});
+
+const yaw   = new THREE.Euler(0,0,0,'YXZ');
+const pitch = new THREE.Euler(0,0,0,'YXZ');
+let isLocked = false;
+
+canvas.addEventListener('click', () => {
+  if(G.controlMode === 'desktop') {
+    canvas.requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  isLocked = document.pointerLockElement === canvas;
+});
+document.addEventListener('mousemove', e => {
+  if(!isLocked || G.controlMode !== 'desktop') return;
+  yaw.y -= e.movementX * 0.002;
+  yaw.x -= e.movementY * 0.002;
+  yaw.x = Math.max(-Math.PI/2+0.05, Math.min(Math.PI/2-0.05, yaw.x));
+});
+document.addEventListener('mousedown', e => {
+  if(e.button===0 && isLocked && G.controlMode === 'desktop') doAttack();
+});
+
+let velY = 0, onGround = true, jumpCooldown = 0;
+const PLAYER_SPEED_NORMAL = 0.085;
+let playerSpeed = PLAYER_SPEED_NORMAL;
+
+function handleKey(code) {
+  if(code==='Space' && onGround && jumpCooldown<=0 && !G.injuries.leftLeg && !G.injuries.rightLeg && !G.onWheelchair && !G.crawling) {
+    velY = 0.22; onGround = false; jumpCooldown = 20;
+    logMsg('🦘 Прыжок!');
+  }
+  if(code==='KeyB') openShop();
+  if(code==='KeyF' && G.caravanNear && G.faction==='elf') robCaravan();
+  if(code==='KeyE') interact();
+}
+
+function interact() {
+  // near caravan?
+  if(G.caravanNear) { if(G.faction==='elf') robCaravan(); }
+}
+
+function updateMovement() {
+  if(G.faction===null) return;
+  let speed = playerSpeed;
+  if(G.crawling) speed = 0.022;
+  else if(G.onWheelchair) speed = 0.055;
+  else if(G.injuries.leftLeg || G.injuries.rightLeg) speed = 0.04;
+
+  const dir = new THREE.Vector3();
+  
+  // Desktop controls
+  if(G.controlMode === 'desktop') {
+    if(keys['KeyW']) dir.z -= 1;
+    if(keys['KeyS']) dir.z += 1;
+    if(keys['KeyA']) dir.x -= 1;
+    if(keys['KeyD']) dir.x += 1;
+  }
+  // Mobile controls
+  else if(G.controlMode === 'mobile') {
+    dir.x = mobileInput.x;
+    dir.z = mobileInput.z;
+  }
+  
+  if(dir.length() > 0) {
+    dir.normalize();
+    dir.applyEuler(new THREE.Euler(0, yaw.y, 0));
+    dir.multiplyScalar(speed);
+    camera.position.add(dir);
+  }
+
+  // Gravity / jump
+  velY -= 0.012;
+  camera.position.y += velY;
+  if(camera.position.y < 1.7) {
+    camera.position.y = 1.7;
+    velY = 0; onGround = true;
+  }
+  if(jumpCooldown>0) jumpCooldown--;
+
+  // Keep in bounds
+  camera.position.x = Math.max(-190, Math.min(190, camera.position.x));
+  camera.position.z = Math.max(-190, Math.min(190, camera.position.z));
+
+  camera.rotation.copy(yaw);
+}
+
+// ============================================================
+//  COMBAT
+// ============================================================
+const attackCooldown = { val:0 };
+function doAttack() {
+  if(attackCooldown.val > 0) return;
+  if(G.injuries.rightArm && !G.prosthetics.arm) {
+    logMsg('❌ Ваша правая рука отрублена!'); return;
+  }
+  attackCooldown.val = 30;
+  showMsg('⚔', 500);
+
+  // raycasting
+  const ray = new THREE.Raycaster(camera.position,
+    new THREE.Vector3(0,0,-1).applyEuler(camera.rotation), 0.1, 3);
+
+  for(const en of enemies) {
+    if(!en.userData.alive) continue;
+    const hits = ray.intersectObject(en, true);
+    if(hits.length > 0) {
+      let dmg = 15 + Math.floor(Math.random()*10);
+      if(G.weapon==='sword') dmg += 15;
+      en.userData.hp -= dmg;
+
+      // Chance to wound enemy
+      const woundRoll = Math.random();
+      if(woundRoll < 0.15) {
+        severeHitEnemy(en, 'arm');
+      } else if(woundRoll < 0.22) {
+        severeHitEnemy(en, 'leg');
+      }
+
+      if(en.userData.hp <= 0) killEnemy(en);
+      else logMsg(`⚔ Враг получил ${dmg} урона! (${en.userData.hp}/${en.userData.maxHp})`);
+      break;
+    }
+  }
+}
+
+function severeHitEnemy(en, part) {
+  if(part==='arm' && en.userData.hasArm) {
+    en.userData.hasArm = false;
+    en.children.forEach(c => { if(c.userData.isArm) c.visible=false; });
+    logMsg('💥 Вы отрубили врагу руку!');
+  }
+  if(part==='leg' && en.userData.hasLeg) {
+    en.userData.hasLeg = false;
+    en.userData.speed *= 0.4;
+    logMsg('💥 Вы отрубили врагу ногу! Он ползёт...');
+  }
+}
+
+function killEnemy(en) {
+  en.userData.alive = false; en.userData.dead = true;
+  en.rotation.z = Math.PI/2;
+  en.position.y = -0.4;
+  G.kills++;
+  const loot = 10 + Math.floor(Math.random()*25);
+  G.gold += loot;
+  updateHUD();
+  logMsg(`💀 Враг убит! +${loot} монет. Всего убийств: ${G.kills}`);
+}
+
+// ============================================================
+//  ENEMY AI
+// ============================================================
+let aiTimer = 0;
+function updateEnemies() {
+  aiTimer++;
+  let nearEnemy = false;
+  enemies.forEach(en => {
+    if(!en.userData.alive) {
+      en.userData.deathTimer++;
+      // corpse stays (3D) — just lies there
+      return;
+    }
+    const dx = camera.position.x - en.position.x;
+    const dz = camera.position.z - en.position.z;
+    const dist = Math.sqrt(dx*dx+dz*dz);
+
+    // Move toward player if close
+    if(dist < 22) {
+      const nx = dx/dist, nz = dz/dist;
+      en.position.x += nx * en.userData.speed;
+      en.position.z += nz * en.userData.speed;
+      en.lookAt(camera.position.x, 0, camera.position.z);
+
+      // Arm animation
+      en.children.forEach(c => {
+        if(c.userData && c.userData.isArm) {
+          c.rotation.x = Math.sin(aiTimer*0.08)*0.5;
+        }
+      });
+
+      if(dist < 1.8 && aiTimer % 60 === 0) {
+        // Attack player
+        let dmg = 8 + Math.floor(Math.random()*8);
+        const roll = Math.random();
+        if(roll < 0.04 && !G.injuries.rightArm) {
+          injurePlayer('rightArm');
+        } else if(roll < 0.07 && !G.injuries.rightLeg) {
+          injurePlayer('rightLeg');
+        } else if(roll < 0.085 && !G.injuries.leftEye) {
+          injurePlayer('leftEye');
+        } else {
+          G.hp = Math.max(0, G.hp - dmg);
+          logMsg(`🩸 Враг атакует! -${dmg} HP`);
+          flashBlood();
+        }
+        updateHUD();
+        if(G.hp<=0) gameOver();
+        nearEnemy = true;
+      }
+      nearEnemy = true;
+    }
+    // billboard billboard facing
+    if(en.userData.isBillboard) en.lookAt(camera.position);
+  });
+  G.enemyNear = nearEnemy;
+}
+
+// ============================================================
+//  INJURY SYSTEM
+// ============================================================
+function injurePlayer(part) {
+  if(G.injuries[part]) return;
+  G.injuries[part] = true;
+  const msgs = {
+    rightArm: '🩸 Вам отрубили правую руку! Найдите лекаря или купите протез, иначе умрёте!',
+    leftArm:  '🩸 Вам отрубили левую руку!',
+    rightLeg: '🩸 Вам отрубили ногу! Вы ползёте или можете купить протез.',
+    leftLeg:  '🩸 Вам повредили ногу!',
+    leftEye:  '🩸 Вам выкололи глаз! Половина обзора потеряна!'
+  };
+  logMsg(msgs[part] || '🩸 Вы ранены!');
+
+  if(part==='leftEye' && !G.prosthetics.eye) {
+    document.getElementById('eye-overlay').style.opacity='1';
+  }
+  if(part==='rightLeg' || part==='leftLeg') {
+    if(!G.prosthetics.leg) {
+      // 50% chance wheelchair, 50% crawl
+      if(Math.random()<0.5) { G.onWheelchair=true; logMsg('🦼 Вы передвигаетесь на коляске!'); }
+      else { G.crawling=true; logMsg('🐛 Вы ползёте по земле...'); }
+    }
+  }
+  if(part==='rightArm') {
+    // bleed out if not healed
+    if(!G.prosthetics.arm) startBleed();
+  }
+  G.hp -= 20;
+  updateHUD();
+  flashBlood();
+  if(G.hp<=0) gameOver();
+}
+
+let bleedInterval = null;
+function startBleed() {
+  if(bleedInterval) return;
+  logMsg('🩸 Вы теряете кровь! Вам нужно лечение!');
+  bleedInterval = setInterval(() => {
+    if(G.injuries.rightArm && !G.prosthetics.arm) {
+      G.hp -= 3;
+      updateHUD();
+      flashBlood();
+      if(G.hp<=0) { clearInterval(bleedInterval); gameOver(); }
+    } else {
+      clearInterval(bleedInterval); bleedInterval=null;
+    }
+  }, 3000);
+}
+
+function flashBlood() {
+  const el = document.getElementById('blood-overlay');
+  el.style.boxShadow='inset 0 0 60px rgba(192,57,43,0.7)';
+  setTimeout(()=>el.style.boxShadow='inset 0 0 0px rgba(192,57,43,0)',400);
+}
+
+// ============================================================
+//  CARAVAN ROBBERY
+// ============================================================
+function makeCaravanBtn(show) {
+  document.getElementById('caravan-btn').style.display = show ? 'block' : 'none';
+}
+function robCaravan() {
+  if(!caravan || caravan.userData.robbed) return;
+  caravan.userData.robbed = true;
+  const loot = caravan.userData.gold;
+  G.gold += loot;
+  makeCaravanBtn(false);
+  logMsg(`🪙 Вы ограбили корован! +${loot} монет!`);
+  updateHUD();
+  // fade caravan
+  caravan.traverse(c=>{ if(c.material) c.material.opacity=0.3; c.material && (c.material.transparent=true); });
+}
+
+// ============================================================
+//  SHOP
+// ============================================================
+function openShop() {
+  document.exitPointerLock();
+  document.getElementById('shop').style.display='flex';
+}
+function closeShop() {
+  document.getElementById('shop').style.display='none';
+}
+function buyItem(item, price) {
+  if(G.gold < price) { logMsg('💸 Недостаточно монет!'); return; }
+  G.gold -= price;
+  G.inventory.push(item);
+  const msgs = {
+    potion: () => {
+      const heal = 30 + (G.armor ? 5 : 0);
+      G.hp = Math.min(G.maxHp, G.hp + heal);
+      logMsg(`🧪 Вы выпили зелье! +${heal} HP`);
+    },
+    sword: () => { G.weapon='sword'; logMsg('⚔ Теперь у вас есть меч!'); },
+    bow:   () => { G.weapon='bow';   logMsg('🏹 Теперь у вас есть лук!'); },
+    armor: () => { G.armor=true;    logMsg('🛡 Вы надели кожаный доспех!'); G.maxHp=120; },
+    prosthetic_arm: () => {
+      G.prosthetics.arm=true;
+      if(bleedInterval){ clearInterval(bleedInterval); bleedInterval=null; }
+      G.injuries.rightArm=false;
+      logMsg('🦾 Протез руки установлен! Вы снова можете сражаться!');
+    },
+    prosthetic_leg: () => {
+      G.prosthetics.leg=true; G.crawling=false; G.onWheelchair=false;
+      G.injuries.rightLeg=false; G.injuries.leftLeg=false;
+      logMsg('🦿 Протез ноги установлен! Вы снова можете ходить!');
+    },
+    eye_patch: () => {
+      G.prosthetics.eye=true; G.injuries.leftEye=false;
+      document.getElementById('eye-overlay').style.opacity='0';
+      logMsg('👁 Глазной протез установлен!');
+    },
+    food: () => { G.stamina=Math.min(100, G.stamina+40); logMsg('🍖 Вы поели. Выносливость восстановлена!'); },
+    horse: () => { playerSpeed=0.16; logMsg('🐴 Вы купили лошадь! Скорость передвижения удвоена!'); }
+  };
+  if(msgs[item]) msgs[item]();
+  updateHUD();
+}
+
+// ============================================================
+//  FACTION ABILITIES
+// ============================================================
+function launchAttack() {
+  if(G.faction==='evil') {
+    logMsg('💀 Вы ведёте своё войско в атаку на дворец! Генеральное наступление!');
+    showMsg('⚔ АТАКА!', 2000);
+    spawnAllies(5);
+    document.getElementById('attack-btn').style.display='none';
+  }
+}
+
+function spawnAllies(count) {
+  for(let i=0;i<count;i++) {
+    const ally = makeEnemy('evil', camera.position.x+(Math.random()-0.5)*6,
+      camera.position.z+(Math.random()-0.5)*6);
+    ally.userData.isAlly=true;
+    // allies won't attack player
+  }
+}
+
+// ============================================================
+//  MINIMAP
+// ============================================================
+const mmCanvas = document.getElementById('mm');
+const mmCtx = mmCanvas.getContext('2d');
+const ZONE_COLORS = {
+  neutral:'#c8a050', palace:'#4080c0', elves:'#2d7a2d', evil:'#6030a0'
+};
+
+function getMinimapSize() {
+  const container = document.getElementById('minimap');
+  const rect = container.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
+function drawMinimap() {
+  const size = getMinimapSize();
+  // Update canvas size if needed
+  if(mmCanvas.width !== size.width || mmCanvas.height !== size.height) {
+    mmCanvas.width = size.width;
+    mmCanvas.height = size.height;
+  }
+  
+  const w = mmCanvas.width;
+  const h = mmCanvas.height;
+  const hw = w / 2; // half width
+  const hh = h / 2; // half height
+  
+  mmCtx.fillStyle='#111'; mmCtx.fillRect(0,0,w,h);
+  // zones
+  mmCtx.fillStyle='#c8a05044'; mmCtx.fillRect(0,0,hw,hh);
+  mmCtx.fillStyle='#4080c044'; mmCtx.fillRect(hw,0,hw,hh);
+  mmCtx.fillStyle='#2d7a2d44'; mmCtx.fillRect(0,hh,hw,hh);
+  mmCtx.fillStyle='#6030a044'; mmCtx.fillRect(hw,hh,hw,hh);
+  // zone labels
+  mmCtx.font=`${Math.floor(w/17)}px sans-serif`; mmCtx.textAlign='center';
+  mmCtx.fillStyle='#fff';
+  mmCtx.fillText('Нейтр.',hw/2,hh*0.15);
+  mmCtx.fillText('Дворец',hw+hw/2,hh*0.15);
+  mmCtx.fillText('Эльфы',hw/2,hh+hh*0.15);
+  mmCtx.fillText('Злодей',hw+hw/2,hh+hh*0.15);
+
+  // enemies
+  enemies.forEach(en => {
+    if(!en.userData.alive) return;
+    const mx = hw + (en.position.x/190)*(w-2);
+    const mz = hh + (en.position.z/190)*(h-2);
+    mmCtx.fillStyle = en.userData.type==='soldier' ? '#5080ff' :
+      en.userData.type==='elf' ? '#40c040' : '#c040c0';
+    mmCtx.fillRect(mx-2, mz-2, 4, 4);
+  });
+  // caravan
+  if(caravan && !caravan.userData.robbed) {
+    const mx = hw+(caravan.position.x/190)*(w-2);
+    const mz = hh+(caravan.position.z/190)*(h-2);
+    mmCtx.fillStyle='#f1c40f';
+    mmCtx.fillRect(mx-3,mz-3,6,6);
+  }
+  // player
+  mmCtx.fillStyle='#ff4040';
+  mmCtx.beginPath();
+  const px = hw+(camera.position.x/190)*(w-2);
+  const pz = hh+(camera.position.z/190)*(h-2);
+  mmCtx.arc(px, pz, Math.max(3, w/35),0,Math.PI*2);
+  mmCtx.fill();
+  // direction indicator
+  mmCtx.strokeStyle='#ff4040'; mmCtx.lineWidth=1.5;
+  mmCtx.beginPath();
+  mmCtx.moveTo(px,pz);
+  mmCtx.lineTo(px-Math.sin(yaw.y)*10, pz-Math.cos(yaw.y)*10);
+  mmCtx.stroke();
+}
+
+// ============================================================
+//  CARAVAN PROXIMITY CHECK
+// ============================================================
+function checkProximity() {
+  if(!caravan || caravan.userData.robbed) { G.caravanNear=false; makeCaravanBtn(false); return; }
+  const dx = camera.position.x - caravan.position.x;
+  const dz = camera.position.z - caravan.position.z;
+  const d  = Math.sqrt(dx*dx+dz*dz);
+  if(d<6 && G.faction==='elf') {
+    G.caravanNear=true; makeCaravanBtn(true);
+  } else {
+    G.caravanNear=false; makeCaravanBtn(false);
+  }
+}
+
+// ============================================================
+//  SAVE / LOAD
+// ============================================================
+function saveGame() {
+  const data = {
+    faction:G.faction, hp:G.hp, maxHp:G.maxHp, stamina:G.stamina,
+    gold:G.gold, weapon:G.weapon, armor:G.armor,
+    injuries:{...G.injuries}, prosthetics:{...G.prosthetics},
+    crawling:G.crawling, onWheelchair:G.onWheelchair,
+    kills:G.kills, inventory:[...G.inventory],
+    pos:{ x:camera.position.x, y:camera.position.y, z:camera.position.z },
+    yaw:{ x:yaw.x, y:yaw.y }
+  };
+  localStorage.setItem('realm_save', JSON.stringify(data));
+  logMsg('💾 Игра сохранена!');
+}
+function loadGame() {
+  const raw = localStorage.getItem('realm_save');
+  if(!raw) { logMsg('❌ Нет сохранения!'); return; }
+  const d = JSON.parse(raw);
+  Object.assign(G, d);
+  camera.position.set(d.pos.x, d.pos.y, d.pos.z);
+  yaw.x=d.yaw.x; yaw.y=d.yaw.y;
+  updateHUD();
+  if(G.injuries.leftEye && !G.prosthetics.eye)
+    document.getElementById('eye-overlay').style.opacity='1';
+  logMsg('📂 Игра загружена!');
+}
+document.addEventListener('keydown', e => {
+  if(e.key==='F5'){ e.preventDefault(); saveGame(); }
+  if(e.key==='F9'){ e.preventDefault(); loadGame(); }
+});
+
+// ============================================================
+//  HUD UPDATE
+// ============================================================
+function updateHUD() {
+  document.getElementById('hp-fill').style.width   = (G.hp/G.maxHp*100)+'%';
+  document.getElementById('sta-fill').style.width  = (G.stamina/100*100)+'%';
+  document.getElementById('gold-val').textContent   = G.gold;
+}
+
+// ============================================================
+//  LOG
+// ============================================================
+const logEl = document.getElementById('log');
+function logMsg(text) {
+  const div = document.createElement('div');
+  div.className='log-entry'; div.textContent=text;
+  logEl.prepend(div);
+  while(logEl.children.length>6) logEl.removeChild(logEl.lastChild);
+}
+
+// ============================================================
+//  MESSAGE FLASH
+// ============================================================
+const msgEl = document.getElementById('msg');
+function showMsg(text, dur=1200) {
+  msgEl.textContent=text; msgEl.style.opacity='1';
+  setTimeout(()=>msgEl.style.opacity='0', dur);
+}
+
+// ============================================================
+//  GAME OVER
+// ============================================================
+function gameOver() {
+  showMsg('💀 ВЫ ПОГИБЛИ!\n\nНажмите F9 для загрузки', 99999);
+  G.faction=null;
+  setTimeout(()=>{
+    const m=document.getElementById('menu'); m.style.display='flex';
+    document.exitPointerLock();
+  }, 3000);
+}
+
+// ============================================================
+//  STAMINA REGEN
+// ============================================================
+let staminaTimer=0;
+function regenStamina() {
+  staminaTimer++;
+  if(staminaTimer%120===0) {
+    G.stamina = Math.min(100, G.stamina+5);
+    updateHUD();
+  }
+}
+
+// ============================================================
+//  START GAME
+// ============================================================
+let sceneBuilt=false;
+function startGame(faction) {
+  console.log('Starting game with faction:', faction, 'control mode:', G.controlMode);
+  G.faction=faction;
+  document.getElementById('menu').style.display='none';
+
+  // Clear existing
+  while(scene.children.length>0) scene.remove(scene.children[0]);
+  enemies.length=0; caravan=null;
+  scene.add(sun); scene.add(hemi); scene.add(new THREE.AmbientLight(0x334455,0.7));
+
+  console.log('Building terrain...');
+  makeGround(faction);
+
+  if(faction==='elf') {
+    scene.background = new THREE.Color(0x3a6b30);
+    scene.fog = new THREE.FogExp2(0x4a7c59, 0.018);
+    console.log('Spawning forest...');
+    spawnForest(180);
+    console.log('Making village...');
+    makeElfVillage();
+    makeCaravan();
+    document.getElementById('caravan-btn').style.display='none';
+    logMsg('ℹ️ WASD: движение, ЛКМ: атака, B: магазин, F: грабить корован');
+  } else if(faction==='guard') {
+    scene.background = new THREE.Color(0x8a7560);
+    scene.fog = new THREE.FogExp2(0xa09070, 0.010);
+    spawnForest(30);
+    makePalace();
+    logMsg('🛡 Защищайте дворец! Подчиняйтесь приказам командира.');
+    // spawn commander NPC (static)
+    const cmd = makeEnemy('soldier', 3, 5);
+    cmd.userData.isCommander=true; cmd.userData.isAlly=true;
+    cmd.userData.hp=9999; cmd.userData.speed=0;
+  } else if(faction==='evil') {
+    scene.background = new THREE.Color(0x1a0f1f);
+    scene.fog = new THREE.FogExp2(0x1a0f1f, 0.018);
+    spawnForest(20);
+    makeEvilFort();
+    document.getElementById('attack-btn').style.display='block';
+    logMsg('💀 Вы — Тёмный Владыка! Командуйте войсками!');
+  }
+
+  console.log('Spawning enemies...');
+  spawnEnemies(faction);
+
+  camera.position.set(0, 1.7, 0);
+  yaw.y=0; yaw.x=0;
+  G.hp=100; G.maxHp=100; G.stamina=100; G.gold=150;
+  Object.keys(G.injuries).forEach(k=>G.injuries[k]=false);
+  Object.keys(G.prosthetics).forEach(k=>G.prosthetics[k]=false);
+  G.crawling=false; G.onWheelchair=false;
+  document.getElementById('eye-overlay').style.opacity='0';
+  updateHUD();
+  sceneBuilt=true;
+  
+  // Show mobile controls if in mobile mode
+  if(G.controlMode === 'mobile') {
+    console.log('Showing mobile controls in game');
+    const mobileControls = document.getElementById('mobile-controls');
+    mobileControls.style.display = 'block';
+    console.log('Mobile controls display:', mobileControls.style.display);
+    // Re-initialize if needed
+    if(!mobileControlsInitialized) {
+      console.log('Re-initializing mobile controls');
+      initMobileControls();
+    }
+  }
+  
+  // Request pointer lock for desktop mode
+  if(G.controlMode === 'desktop') {
+    setTimeout(() => canvas.click(), 100);
+  }
+  
+  console.log('Starting animation loop, scene children count:', scene.children.length);
+  // Force initial render
+  renderer.render(scene, camera);
+}
+
+// ============================================================
+//  BILLBOARD FACE CAMERA
+// ============================================================
+function updateBillboards() {
+  scene.traverse(obj => {
+    if(obj.userData && obj.userData.isBillboard) {
+      obj.rotation.y = Math.atan2(
+        camera.position.x - obj.position.x,
+        camera.position.z - obj.position.z
+      );
+    }
+  });
+}
+
+// ============================================================
+//  LOD: distant trees as billboard, near trees as 3D
+// ============================================================
+function updateTreeLOD() {
+  trees.forEach(t => {
+    const dx=camera.position.x-t.position.x;
+    const dz=camera.position.z-t.position.z;
+    const d=Math.sqrt(dx*dx+dz*dz);
+    // show full 3D only within 60 units
+    t.children.forEach(c => c.visible = d < 60);
+    t.visible = true;
+  });
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+let animationId = null;
+function animate(ts=0) {
+  animationId = requestAnimationFrame(animate);
+  
+  if(G.faction===null || !sceneBuilt) {
+    // Just render the scene even if game hasn't started
+    renderer.render(scene, camera);
+    return;
+  }
+
+  updateMovement();
+  updateEnemies();
+  updateBillboards();
+  updateTreeLOD();
+  checkProximity();
+  regenStamina();
+  drawMinimap();
+  if(attackCooldown.val>0) attackCooldown.val--;
+
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Handle orientation change for mobile
+window.addEventListener('orientationchange', () => {
+  setTimeout(() => {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }, 100);
+});
+
+// Initial render of menu bg and start animation loop
+(function init() {
+  scene.background = new THREE.Color(0x0a0a18);
+  renderer.render(scene, camera);
+  // Start animation loop immediately
+  animate();
+})();
+</script>
+</body>
+</html>
