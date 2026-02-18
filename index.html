@@ -27,20 +27,27 @@ body {
 @media (orientation: landscape) and (max-width: 915px) {
   #hud {
     top:0; bottom:auto;
-    align-items:flex-start;
-    padding:8px 15px;
+    justify-content: center; /* Center everything */
+    align-items:center;
+    padding:6px 15px;
+    gap: 15px;
   }
   .bar-wrap {
-    min-width:120px;
+    flex-direction: row; /* Horizontal bars */
+    align-items: center;
+    gap: 6px;
+    min-width: auto;
   }
   .bar {
     height:10px;
+    width: 100px; /* Fixed width for bars */
   }
   .bar-label {
-    font-size:10px;
+    font-size:9px;
+    white-space: nowrap;
   }
   #gold-hud {
-    font-size:12px;
+    font-size:11px;
   }
 }
 .bar-wrap { display:flex; flex-direction:column; gap:4px; min-width:160px; }
@@ -74,11 +81,11 @@ body {
 /* Landscape mode: smaller minimap */
 @media (orientation: landscape) and (max-width: 915px) {
   #minimap {
-    width:100px; height:100px;
-    top:60px; right:8px;
+    width:90px; height:90px;
+    top:8px; right:8px;
   }
   #minimap canvas {
-    width:100px; height:100px;
+    width:90px; height:90px;
   }
 }
 
@@ -106,6 +113,8 @@ body {
   position:fixed; inset:0; background:rgba(0,0,0,0.92);
   display:flex; flex-direction:column; align-items:center;
   justify-content:center; z-index:100; gap:14px;
+  padding: 20px;
+  overflow-y: auto;
 }
 #control-menu h1, #menu h1 {
   font-size:42px; font-weight:900; letter-spacing:3px;
@@ -129,11 +138,41 @@ body {
 #btn-evil  { border-color:#8e44ad; color:#9b59b6; }
 #btn-evil:hover  { background:rgba(142,68,173,0.2); }
 
+/* Landscape mode: compact menu */
+@media (orientation: landscape) and (max-height: 600px) {
+  #control-menu h1, #menu h1 {
+    font-size: 28px;
+    margin-bottom: 5px;
+  }
+  #control-menu h2, #menu h2 {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .faction-btn {
+    width: 260px;
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  .faction-btn .btn-title {
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
+  .faction-btn .btn-desc {
+    font-size: 10px;
+  }
+  #control-menu, #menu {
+    gap: 8px;
+    padding: 10px;
+  }
+}
+
 /* SHOP */
 #shop {
   position:fixed; inset:0; background:rgba(0,0,0,0.88);
   display:none; flex-direction:column; align-items:center;
   justify-content:center; z-index:90; gap:10px;
+  padding: 20px;
+  overflow-y: auto;
 }
 #shop h2 { color:#f1c40f; font-size:28px; margin-bottom:10px; }
 .shop-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:600px; }
@@ -150,6 +189,41 @@ body {
   margin-top:16px; padding:10px 32px; background:#c0392b; color:#fff;
   border:none; border-radius:8px; font-size:15px; cursor:pointer;
   pointer-events:all;
+}
+
+/* Landscape mode: compact shop */
+@media (orientation: landscape) and (max-height: 600px) {
+  #shop {
+    padding: 15px 20px;
+    gap: 8px;
+  }
+  #shop h2 {
+    font-size: 20px;
+    margin-bottom: 5px;
+  }
+  .shop-grid {
+    gap: 8px;
+    max-width: 500px;
+  }
+  .shop-item {
+    padding: 8px;
+  }
+  .shop-item .item-icon {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .shop-item .item-name {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+  .shop-item .item-price {
+    font-size: 10px;
+  }
+  #shop-close {
+    margin-top: 8px;
+    padding: 8px 24px;
+    font-size: 13px;
+  }
 }
 
 /* INJURY OVERLAY */
@@ -180,12 +254,15 @@ body {
 
 @media (orientation: landscape) and (max-width: 915px) {
   #log {
-    top:55px;
-    width:200px;
-    max-height:80px;
+    top:auto;
+    bottom:12px; /* Move to bottom left in landscape */
+    left:12px;
+    width:180px;
+    max-height:60px;
   }
   .log-entry {
-    font-size:10px;
+    font-size:9px;
+    line-height:1.3;
   }
 }
 
