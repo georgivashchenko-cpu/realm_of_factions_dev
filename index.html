@@ -321,11 +321,12 @@ body {
 
 @media (orientation: landscape) and (max-width: 915px) {
   #log {
-    top: auto;
-    bottom: 5vh; /* Above joystick, not overlapping */
-    left: calc(3vw + min(115px, 15vh)); /* Right of joystick */
-    width: 150px;
-    max-height: 50px;
+    top: 60px; /* Below HUD */
+    bottom: auto;
+    left: 8px;
+    right: auto;
+    width: 200px;
+    max-height: 70px;
     background: rgba(0, 0, 0, 0.5);
     padding: 4px 8px;
     border-radius: 8px;
@@ -361,12 +362,14 @@ body {
 #mobile-controls {
   position:fixed; inset:0; pointer-events:none; z-index:15; display:none;
 }
+
+/* Joystick - larger for better control */
 .joystick {
   position: absolute; 
   bottom: 5vh; 
-  left: 5vw; 
-  width: min(140px, 20vw); 
-  height: min(140px, 20vw);
+  left: 3vw; 
+  width: min(160px, 22vw); 
+  height: min(160px, 22vw);
   background: rgba(255, 255, 255, 0.08); 
   border-radius: 50%; 
   border: 2px solid rgba(255, 255, 255, 0.25);
@@ -388,17 +391,19 @@ body {
   transition: all 0.1s;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
+
+/* Action buttons - much larger for easy tapping */
 .mobile-btn {
   position: absolute; 
-  width: min(70px, 12vw); 
-  height: min(70px, 12vw); 
+  width: min(85px, 14vw); 
+  height: min(85px, 14vw); 
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12); 
   border: 2px solid rgba(255, 255, 255, 0.3);
   display: flex; 
   align-items: center; 
   justify-content: center;
-  font-size: min(28px, 5vw); 
+  font-size: min(32px, 5.5vw); 
   color: #fff; 
   pointer-events: all; 
   user-select: none;
@@ -413,27 +418,32 @@ body {
   transform: scale(0.92);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
-#btn-jump { bottom: 15vh; right: 5vw; }
+
+/* Portrait mode positions */
+#btn-jump { 
+  bottom: 18vh; 
+  right: 4vw; 
+}
 #btn-attack { 
-  bottom: 5vh; 
-  right: calc(5vw + min(80px, 14vw));
+  bottom: 6vh; 
+  right: calc(4vw + min(95px, 16vw));
   background: rgba(231, 76, 60, 0.15);
   border-color: rgba(231, 76, 60, 0.4);
 }
 #btn-interact { 
-  bottom: 25vh; 
-  right: 5vw; 
-  font-size: min(22px, 4vw);
+  bottom: 30vh; 
+  right: 4vw; 
+  font-size: min(26px, 4.5vw);
   background: rgba(52, 152, 219, 0.15);
   border-color: rgba(52, 152, 219, 0.4);
 }
-#btn-shop { display: none; } /* Hidden - using HUD button instead */
+#btn-shop { display: none; }
 #btn-menu { 
-  top: 5vh; 
-  left: 5vw; 
-  width: min(50px, 9vw); 
-  height: min(50px, 9vw); 
-  font-size: min(18px, 3.5vw); 
+  top: 8vh; 
+  left: 3vw; 
+  width: min(55px, 10vw); 
+  height: min(55px, 10vw); 
+  font-size: min(20px, 4vw); 
   background: rgba(192, 57, 43, 0.7);
   border-color: rgba(192, 57, 43, 0.9);
 }
@@ -444,66 +454,57 @@ body {
   white-space:nowrap; padding:0 10px;
 }
 
+/* Landscape mode - ergonomic layout like PUBG/COD Mobile */
 @media (orientation: landscape) {
   .joystick { 
-    bottom: 6vh; 
-    left: 3vw; 
-    width: min(110px, 14vh); 
-    height: min(110px, 14vh);
-    background: rgba(255, 255, 255, 0.08);
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    bottom: 3vh; 
+    left: 2vw; 
+    width: min(140px, 18vh); 
+    height: min(140px, 18vh);
   }
-  .joystick-stick {
-    background: rgba(255, 255, 255, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.7);
-  }
-  #btn-jump { 
-    bottom: 16vh; 
-    right: 3vw; 
-    width: min(55px, 9vh); 
-    height: min(55px, 9vh);
-    background: rgba(255, 255, 255, 0.12);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-size: min(22px, 4vh);
-  }
+  
+  /* Attack button - primary action, large and bottom-right */
   #btn-attack { 
-    bottom: 6vh; 
-    right: calc(3vw + min(60px, 10vh)); 
-    width: min(55px, 9vh); 
-    height: min(55px, 9vh);
-    background: rgba(231, 76, 60, 0.15);
-    border: 2px solid rgba(231, 76, 60, 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-size: min(22px, 4vh);
+    bottom: 3vh; 
+    right: 2vw;
+    width: min(90px, 12vh); 
+    height: min(90px, 12vh);
+    background: rgba(231, 76, 60, 0.2);
+    border: 3px solid rgba(231, 76, 60, 0.5);
+    font-size: min(34px, 5.2vh);
   }
+  
+  /* Jump button - above attack, natural thumb reach */
+  #btn-jump { 
+    bottom: calc(3vh + min(98px, 13vh)); 
+    right: 2vw;
+    width: min(75px, 10vh); 
+    height: min(75px, 10vh);
+    font-size: min(28px, 4.5vh);
+  }
+  
+  /* Interact button - middle right, away from combat */
   #btn-interact { 
-    bottom: 26vh; 
-    right: 3vw; 
-    width: min(55px, 9vh); 
-    height: min(55px, 9vh);
-    background: rgba(52, 152, 219, 0.15);
-    border: 2px solid rgba(52, 152, 219, 0.4);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-size: min(20px, 3.8vh);
+    top: 50%;
+    transform: translateY(-50%);
+    right: 2vw;
+    bottom: auto;
+    width: min(70px, 9vh); 
+    height: min(70px, 9vh);
+    background: rgba(52, 152, 219, 0.2);
+    border: 2.5px solid rgba(52, 152, 219, 0.5);
+    font-size: min(26px, 4vh);
   }
-  #btn-shop { display: none; }
+  
+  /* Menu button - top left */
   #btn-menu { 
-    top: 6vh; 
-    left: 3vw; 
-    width: min(42px, 7vh); 
-    height: min(42px, 7vh);
-    background: rgba(192, 57, 43, 0.7);
-    border: 2px solid rgba(192, 57, 43, 0.9);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    font-size: min(16px, 3vh);
+    top: 4vh; 
+    left: 2vw; 
+    width: min(50px, 7vh); 
+    height: min(50px, 7vh);
+    font-size: min(18px, 3.5vh);
   }
+  
   .mobile-hint { display: none; }
 }
 
